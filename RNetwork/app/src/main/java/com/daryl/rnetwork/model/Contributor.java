@@ -1,4 +1,4 @@
-package com.daryl.rnetwork;
+package com.daryl.rnetwork.model;
 
 /**
  * Created by Daryl.Huang on 2017/9/1.

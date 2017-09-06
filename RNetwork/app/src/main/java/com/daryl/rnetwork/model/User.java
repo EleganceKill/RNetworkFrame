@@ -1,4 +1,4 @@
-package com.daryl.rnetwork;
+package com.daryl.rnetwork.model;
 
 
 public class User {
