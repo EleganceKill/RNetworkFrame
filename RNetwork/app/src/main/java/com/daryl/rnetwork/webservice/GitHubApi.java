@@ -1,19 +1,15 @@
-package com.daryl.rnetwork;
+package com.daryl.rnetwork.webservice;
 
-import com.example.ljd.retrofit.pojo.Contributor;
-import com.example.ljd.retrofit.pojo.RetrofitBean;
-import com.example.ljd.retrofit.pojo.User;
+import com.daryl.rnetwork.model.Contributor;
+import com.daryl.rnetwork.model.User;
 
 import java.util.List;
-import java.util.Map;
 
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Headers;
 import retrofit2.http.Path;
-import retrofit2.http.Query;
-import retrofit2.http.QueryMap;
 import rx.Observable;
 
 /**
