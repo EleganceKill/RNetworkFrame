@@ -42,6 +42,12 @@ public class MainActivity extends AppCompatActivity {
             public int getCount() {
                 return 2;
             }
+
+            @Override
+            public CharSequence getPageTitle(int position) {
+                return "fragment" + position;
+            }
         });
+        tabLayout.setupWithViewPager(viewPager);
     }
 }
