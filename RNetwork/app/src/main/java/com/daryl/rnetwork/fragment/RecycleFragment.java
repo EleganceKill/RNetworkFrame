@@ -2,13 +2,45 @@ package com.daryl.rnetwork.fragment;
 
 import android.app.Fragment;
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.StaggeredGridLayoutManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.daryl.rnetwork.R;
+import com.daryl.rnetwork.model.GankBeauty;
+import com.daryl.rnetwork.model.GankBeautyResult;
+import com.daryl.rnetwork.model.Item;
+import com.daryl.rnetwork.webservice.WebApi;
+import com.daryl.rnetwork.webservice.WebApiService;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import butterknife.Bind;
+import butterknife.ButterKnife;
+import butterknife.OnClick;
+import rx.Observer;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
+import rx.functions.Func1;
+import rx.schedulers.Schedulers;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -19,6 +51,15 @@ import com.daryl.rnetwork.R;
  * create an instance of this fragment.
  */
 public class RecycleFragment extends BaseFragment {
+
+    @Bind(R.id.swipeRefreshLayout) SwipeRefreshLayout swipeRefreshLayout;
+    @Bind(R.id.gridRv) RecyclerView gridRv;
+    @Bind(R.id.pageTv) TextView pageTv;
+    @Bind(R.id.previousPageBt)
+    Button previousPageBt;
+
+    private ItemListAdapter adapter = new ItemListAdapter();
+    private int page = 0;
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
@@ -33,6 +74,77 @@ public class RecycleFragment extends BaseFragment {
     public RecycleFragment() {
         // Required empty public constructor
     }
+
+    private Observer observer = new Observer<List<Item>>() {
+        @Override
+        public void onCompleted() {
+        }
+
+        @Override
+        public void onError(Throwable e) {
+            swipeRefreshLayout.setRefreshing(false);
+            Toast.makeText(getActivity(), R.string.loading_failed, Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onNext(List<Item> images) {
+            Log.i("daryl", "onNext executed");
+            swipeRefreshLayout.setRefreshing(false);
+            pageTv.setText(getString(R.string.page_with_number, page));
+            adapter.setItems(images);
+        }
+    };
+
+    @OnClick(R.id.previousPageBt)
+    void previousPage() {
+        loadPage(--page);
+        if (page == 1) {
+            previousPageBt.setEnabled(false);
+        }
+    }
+
+    @OnClick(R.id.nextPageBt)
+    void nextPage() {
+        loadPage(++page);
+        if (page == 2) {
+            previousPageBt.setEnabled(true);
+        }
+    }
+
+    private void loadPage(int page) {
+        swipeRefreshLayout.setRefreshing(true);
+        unsubscribe();
+        subscription = WebApiService.createRetrofitService(WebApi.class, "http://gank.io/api/")
+                .getBeauties(10, page)
+                .map(new Func1<GankBeautyResult, Object>() {
+
+                    @Override
+                    public List<Item> call(GankBeautyResult gankBeautyResult) {
+                        List<GankBeauty> gankBeauties = gankBeautyResult.beauties;
+                        List<Item> items = new ArrayList<>(gankBeauties.size());
+                        SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS'Z'");
+                        SimpleDateFormat outputFormat = new SimpleDateFormat("yy/MM/dd HH:mm:ss");
+                        for (GankBeauty gankBeauty : gankBeauties) {
+                            Item item = new Item();
+                            try {
+                                Date date = inputFormat.parse(gankBeauty.createdAt);
+                                item.description = outputFormat.format(date);
+                            } catch (ParseException e) {
+                                e.printStackTrace();
+                                item.description = "unknown date";
+                            }
+                            item.imageUrl = gankBeauty.url;
+                            items.add(item);
+                        }
+                        return items;
+                    }
+                })
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(observer);
+    }
+
+
 
     /**
      * Use this factory method to create a new instance of
@@ -64,8 +176,22 @@ public class RecycleFragment extends BaseFragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_recycle, container, false);
+        View view = inflater.inflate(R.layout.fragment_recycle, container, false);
+        ButterKnife.bind(this, view);
+
+        gridRv.setLayoutManager(new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL));
+        // gridRv.setLayoutManager(new LinearLayoutManager(getActivity(), LinearLayoutManager.VERTICAL, false));
+        gridRv.setAdapter(adapter);
+        gridRv.addItemDecoration(new RecyclerView.ItemDecoration() {
+            @Override
+            public void onDraw(Canvas c, RecyclerView parent, RecyclerView.State state) {
+                super.onDraw(c, parent, state);
+            }
+        });
+
+        swipeRefreshLayout.setColorSchemeColors(Color.BLUE, Color.GREEN, Color.RED, Color.YELLOW);
+        swipeRefreshLayout.setEnabled(false);
+        return view;
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -106,4 +232,40 @@ public class RecycleFragment extends BaseFragment {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
     }
-}
+
+    private class ItemListAdapter extends RecyclerView.Adapter {
+        List<Item> images;
+        @Override
+        public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.grid_item, parent, false);
+            return new DebounceViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+            Log.i("daryl","position is " + position);
+            DebounceViewHolder dViewHolder = (DebounceViewHolder) holder;
+            Item image = images.get(position);
+            dViewHolder.descriptionTv.setText(image.description);
+            Glide.with(holder.itemView.getContext()).load(image.imageUrl).into(dViewHolder.imageIv);
+        }
+        public void setItems(List<Item> images) {
+            this.images = images;
+            notifyDataSetChanged();
+        }
+
+        @Override
+        public int getItemCount() {
+            return images == null ? 0 : images.size();
+        }
+    }
+
+    static class DebounceViewHolder extends RecyclerView.ViewHolder {
+        @Bind(R.id.imageIv) ImageView imageIv;
+        @Bind(R.id.descriptionTv) TextView descriptionTv;
+        public DebounceViewHolder(View itemView) {
+            super(itemView);
+            ButterKnife.bind(this, itemView);
+        }
+    }
+ }

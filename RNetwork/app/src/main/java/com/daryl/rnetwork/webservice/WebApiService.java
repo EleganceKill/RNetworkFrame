@@ -11,11 +11,11 @@ import retrofit2.converter.gson.GsonConverterFactory;
 /**
  * Created by ljd on 3/25/16.
  */
-public class GitHubService {
+public class WebApiService {
 
-    private GitHubService() { }
+    private WebApiService() { }
 
-    public static <T>T createRetrofitService(final Class<T> service) {
+    public static <T>T createRetrofitService(final Class<T> service, final String baseUrl) {
         HttpLoggingInterceptor httpLoggingInterceptor = new HttpLoggingInterceptor();
         httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
@@ -25,10 +25,9 @@ public class GitHubService {
                 .client(builder.build())
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
                 .addConverterFactory(GsonConverterFactory.create())
-                .baseUrl("https://api.github.com/")
+                .baseUrl(baseUrl)
                 .build();
 
         return retrofit.create(service);
     }
-
 }

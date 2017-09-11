@@ -1,6 +1,7 @@
 package com.daryl.rnetwork.webservice;
 
 import com.daryl.rnetwork.model.Contributor;
+import com.daryl.rnetwork.model.GankBeautyResult;
 import com.daryl.rnetwork.model.User;
 
 import java.util.List;
@@ -15,7 +16,7 @@ import rx.Observable;
 /**
  * Created by ljd on 3/25/16.
  */
-public interface GitHubApi {
+public interface WebApi {
 
     @GET("repos/{owner}/{repo}/contributors")
     Call<ResponseBody> contributorsBySimpleGetCall(@Path("owner") String owner, @Path("repo") String repo);
@@ -49,5 +50,6 @@ public interface GitHubApi {
     @GET("users/{user}")
     Observable<User> userByRxJava(@Path("user") String user);
 
-
+    @GET("data/福利/{number}/{page}")
+    Observable<GankBeautyResult> getBeauties(@Path("number") int number, @Path("page") int page);
 }
